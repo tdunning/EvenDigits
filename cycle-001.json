@@ -1,0 +1,16 @@
+{
+  "Mask": 10,
+  "Order": 1,
+  "Length": 4,
+  "Leadin": 1,
+  "EvenItems": 2,
+  "Gain": 2,
+  "Cycle": [
+    4,
+    8
+  ],
+  "Index": [
+    2,
+    3
+  ]
+}
