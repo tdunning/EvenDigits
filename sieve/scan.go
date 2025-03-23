@@ -199,22 +199,13 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 	n := uint64(0)
 	z := big.NewInt(1)
 	tmp := big.NewInt(0)
-	tick := time.NewTicker(500 * time.Millisecond)
 	for {
 		var (
 			job uint64
 			ok  bool
 		)
 
-		messageAvailable := false
-		for !messageAvailable {
-			select {
-			case <-tick.C:
-				log.Printf("worker %d tick %d\n", thread, jobs)
-			case job, ok = <-dispatch:
-				messageAvailable = true
-			}
-		}
+		job, ok = <-dispatch
 		jobs++
 		if !ok {
 			if conf.Verbose {
