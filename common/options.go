@@ -32,13 +32,13 @@ func DecodeLimit(limitString *string, verbose *bool) uint64 {
 		}
 	}
 	if *verbose {
-		if limit > 1_000_000_000_000_000 {
+		if limit >= 1_000_000_000_000_000 {
 			log.Printf(`Limit: %.1fP`, float64(limit)/1e15)
-		} else if limit > 1_000_000_000_000 {
+		} else if limit >= 1_000_000_000_000 {
 			log.Printf(`Limit: %.1fT`, float64(limit)/1e12)
-		} else if limit > 1_000_000_000 {
+		} else if limit >= 1_000_000_000 {
 			log.Printf(`Limit: %.1fG`, float64(limit)/1e9)
-		} else if limit > 1_000_000 {
+		} else if limit >= 1_000_000 {
 			log.Printf(`Limit: %.1fM`, float64(limit)/1e6)
 		} else {
 			log.Printf("Limit: %d", limit)

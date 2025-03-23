@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"slices"
 	"sync"
 	"time"
@@ -73,7 +74,30 @@ func main() {
 	threads := flag.Int("threads", runtime.NumCPU()/2, "Number of threads to use in search")
 	sieve := flag.String("sieve", "cycle-012.json", "JSON file containing a sieve definition")
 	limitString := flag.String("limit", "10G", "Maximum value of N to search. Can use M, G, T, P and E as power of ten")
+	cpuProfile := flag.String("cpuprofile", "", "write cpu profile to file")
+	memProfile := flag.String("memprofile", "", "write memory profile to file")
 	flag.Parse()
+
+	if *cpuProfile != "" {
+		f, err := os.Create(*cpuProfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+	defer func() {
+		if *memProfile != "" {
+			f, err := os.Create(*memProfile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			runtime.GC()
+			pprof.WriteHeapProfile(f)
+			f.Close()
+		}
+	}()
+
 	limit := common.DecodeLimit(limitString, verbose)
 
 	mask := big.NewInt(1)
@@ -108,8 +132,9 @@ func main() {
 
 	solutions := []uint64{}
 	z := big.NewInt(2)
+	zdig := big.NewInt(0)
 	for n := uint64(1); n <= config.Leadin; n++ {
-		if even := checkDigits(z); even == -1 {
+		if even := checkDigits(z, zdig); even == -1 {
 			solutions = append(solutions, n)
 		}
 		z.Mul(z, two).Mod(z, mask)
@@ -228,9 +253,10 @@ func worker(thread int, dispatch chan uint64, conf *Configuration, config LoopAc
 
 		for i, dn := range steps[:cycleSize] {
 			n += dn
-			z.Mul(z, bumps[i]).Mod(z, mask)
+			z.Mul(z, bumps[i])
+			z.Mod(z, mask)
 			r.Tests++
-			if even := checkDigits(z); even == -1 {
+			if even := checkDigits(z, tmp); even == -1 {
 				solutions = append(solutions, n)
 			} else {
 				if even > r.MaxEven {
@@ -302,10 +328,9 @@ func readAccelerator(name string) (LoopAccelerator, error) {
 
 // checkDigits returns -1 if all of the digits in z are even. If not, the
 // position counting from the right is returned.
-func checkDigits(z *big.Int) int {
+func checkDigits(z *big.Int, zdig *big.Int) int {
 	digit := big.NewInt(0)
-	zdig := big.NewInt(0)
-	zdig.Add(z, zero)
+	zdig.Set(z)
 	for j := 0; zdig.Cmp(zero) > 0; j++ {
 		zdig, digit = zdig.QuoRem(zdig, ten, digit)
 		if digit.Uint64()%2 != 0 {
