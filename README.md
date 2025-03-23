@@ -130,11 +130,11 @@ defines how many significant digits are used to disqualify candidate values.
 You can run a simplified search that only uses the 2-digit sieve using the
 program `simple/scan-simple.go`. This allows the following options:
 
-| Option      | Meaning                                                          |
-|-------------|------------------------------------------------------------------|
-| -verbose    | Provide progress information                                     |
-| -limit n    | How many candidates to search. Use M, G, T, P, or E as desired   |
-| -digits d   | How many digits to check for even digits                         |
+| Option    | Meaning                                                        |
+|-----------|----------------------------------------------------------------|
+| -verbose  | Provide progress information                                   |
+| -limit n  | How many candidates to search. Use M, G, T, P, or E as desired |
+| -digits d | How many digits to check for even digits                       |
 
 This program is single-thread and can scan about 5M candidates per second.
 
@@ -142,17 +142,70 @@ The program `sieve/scan.go` is a more complex scanner. It allows a choice of how
 many threads to use as well as selection of the sieve. By default, a 13-digit
 sieve is used. The following options are allowed:
 
-| Option      | Meaning                                                          |
-|-------------|------------------------------------------------------------------|
-| -verbose    | Provide progress information                                     |
-| -limit n    | How many candidates to search. Use M, G, T, P, or E as desired   |
-| -digits d   | How many digits to check for even digits                         |
-| -threads t  | How many threads to use to check candidates                      |
-| -sieve s    | The name of a JSON file containing a sieve definition.           |
+| Option     | Meaning                                                        |
+|------------|----------------------------------------------------------------|
+| -verbose   | Provide progress information                                   |
+| -limit n   | How many candidates to search. Use M, G, T, P, or E as desired |
+| -digits d  | How many digits to check for even digits                       |
+| -threads t | How many threads to use to check candidates                    |
+| -sieve s   | The name of a JSON file containing a sieve definition.         |
 
 This scanner can scan about 10M candidates per second per thread with
 `cycle-002.json` (the standard 2-digit sieve) but accelerates to 85M candidates
 per second with `cycle-009.json` and to roughly 10G candidates per second per
-thread with `cycle-013.json`. 
+thread with `cycle-013.json`.
 
+# Results
 
+Running on a single core of an older server, these were the results using a 15
+digit sieve. Per core, this machine is a bit slower than a single ARM core on my
+laptop but the server has much more memory which becomes important with the
+larger sieve basis.
+
+```
+host:~/EvenDigits$ go run sieve/scan.go -threads 1 -sieve cycle-015.json -limit 100T -verbose -digits 50 
+2025/03/22 21:18:31 Limit: 100.0T
+1 threads
+2025/03/22 21:24:22 sender:    205 (         5%, 1418.2 291639.9) 5518.0 seconds remaining
+2025/03/22 21:29:14 sender:    410 (        10%, 1422.2 584022.5) 5242.2 seconds remaining
+2025/03/22 21:34:08 sender:    615 (        15%, 1427.1 878568.0) 4967.6 seconds remaining
+2025/03/22 21:38:58 sender:    820 (        20%, 1423.2 1167949.3) 4662.4 seconds remaining
+2025/03/22 21:43:46 sender:   1025 (        25%, 1419.7 1456143.0) 4360.0 seconds remaining
+2025/03/22 21:48:35 sender:   1230 (        30%, 1417.9 1744977.5) 4063.8 seconds remaining
+2025/03/22 21:53:23 sender:   1435 (        35%, 1416.4 2033406.0) 3769.0 seconds remaining
+2025/03/22 21:58:13 sender:   1640 (        40%, 1415.9 2323024.2) 3477.5 seconds remaining
+2025/03/22 22:03:01 sender:   1845 (        45%, 1414.9 2611314.1) 3184.8 seconds remaining
+2025/03/22 22:07:50 sender:   2050 (        50%, 1414.3 2900218.0) 2893.6 seconds remaining
+2025/03/22 22:12:37 sender:   2255 (        55%, 1413.1 3187541.3) 2601.6 seconds remaining
+2025/03/22 22:17:25 sender:   2460 (        60%, 1412.4 3475293.9) 2310.6 seconds remaining
+2025/03/22 22:22:14 sender:   2665 (        65%, 1412.1 3764148.7) 2020.7 seconds remaining
+2025/03/22 22:27:03 sender:   2870 (        70%, 1411.7 4052599.5) 1730.8 seconds remaining
+2025/03/22 22:31:50 sender:   3075 (        75%, 1411.2 4340397.5) 1440.9 seconds remaining
+2025/03/22 22:36:38 sender:   3280 (        80%, 1410.8 4628438.1) 1151.2 seconds remaining
+2025/03/22 22:41:26 sender:   3485 (        85%, 1410.5 4916472.7) 861.8 seconds remaining
+2025/03/22 22:46:14 sender:   3690 (        90%, 1410.1 5204284.6) 572.5 seconds remaining
+2025/03/22 22:51:03 sender:   3895 (        95%, 1410.1 5493340.5) 283.4 seconds remaining
+2025/03/22 22:55:46 sender: completed
+2025/03/22 22:55:49 breaking 0
+2025/03/22 22:55:49 exiting 0
+2025/03/22 22:55:49 thread 0 result
+17304993923.7 test/s, total time 5778.7 s
+Limit: 100000000000000
+Tests: 2888794112
+Gain over brute: 34616.520293.1
+solutions = [1 2 3 6 11]
+host:~/EvenDigits$ 
+```
+
+# Known Defects
+
+The code as it stands has a problem running in multi-core mode that seems to be
+related to accidental sharing of non-thread-safe memory structures, particular
+those from the `math/big` library.
+
+Currently, the code also has no unit tests which expose a risk that there might
+be remaining code errors.
+
+Finally, memory usage seems anomalously high. For the largest sieve, the running
+program consumes 5-6GB of main storage. This seems excessive, but no profiling
+has been done yet to understand the source.

@@ -11,6 +11,7 @@ import (
 	"os"
 	"runtime"
 	"slices"
+	"sync"
 	"time"
 )
 
@@ -45,6 +46,7 @@ type LoopAccelerator struct {
 }
 
 type Configuration struct {
+	mu      sync.Mutex
 	Steps   []uint64
 	Bumps   []*big.Int
 	Mask    *big.Int
@@ -122,7 +124,7 @@ func main() {
 	fmt.Printf("%d threads\n", *threads)
 	results := make(chan Result, *threads)
 	for i := 0; i < *threads; i++ {
-		go worker(i, dispatch, conf, config, results)
+		go worker(i, dispatch, &conf, config, results)
 	}
 
 	tests := 0
@@ -169,7 +171,7 @@ func main() {
 }
 
 // worker is where the actual testing happens
-func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAccelerator, results chan Result) {
+func worker(thread int, dispatch chan uint64, conf *Configuration, config LoopAccelerator, results chan Result) {
 	solutions := []uint64{}
 	records := []Record{}
 	r := Result{
@@ -184,6 +186,7 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 		results <- r
 	}()
 
+	conf.mu.Lock()
 	mask := big.NewInt(1)
 	mask.Set(conf.Mask)
 
@@ -193,7 +196,13 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 		bumps[i].Set(bump)
 	}
 
-	cycleSize := len(conf.Steps) - 1
+	steps := make([]uint64, len(conf.Steps))
+	for i, step := range conf.Steps {
+		steps[i] = step
+	}
+	conf.mu.Unlock()
+
+	cycleSize := len(steps) - 1
 
 	jobs := 0
 	n := uint64(0)
@@ -218,7 +227,7 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 		pow(z, tmp, next-n, mask)
 		n = next
 
-		for i, dn := range conf.Steps[:cycleSize] {
+		for i, dn := range steps[:cycleSize] {
 			n += dn
 			z.Mul(z, bumps[i]).Mod(z, mask)
 			r.Tests++
@@ -234,7 +243,7 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 				}
 			}
 		}
-		n += conf.Steps[cycleSize]
+		n += steps[cycleSize]
 		z.Mul(z, bumps[cycleSize]).Mod(z, mask)
 	}
 	r.Success = true
