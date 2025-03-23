@@ -29,7 +29,18 @@ func main() {
 	}
 
 	start := uint64(1)
-	fmt.Printf("%8s %5s %15s %8s %8s %6s %7s\n", "digits", "tail", "cycle", "exclude", "maximal", "last", "even")
+	fmt.Printf("                                                                    gain vs \n")
+	fmt.Printf(
+		"%8s %5s %15s %8s %8s %6s %7s  %s\n",
+		"digits",
+		"tail",
+		"cycle",
+		"exclude",
+		"maximal",
+		"last",
+		"even",
+		"brute force",
+	)
 	for mask, digits := uint64(10), 1; mask <= 1_000_000_000_000_000; mask, digits = 10*mask, digits+1 {
 		fast := start
 		slow := start

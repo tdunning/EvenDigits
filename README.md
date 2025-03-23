@@ -44,7 +44,7 @@ to be evaluated compared to the 5/20 that need to be evaluated when considering
 
 Actually testing values of $2^n$ to see if all digits are even does not usually
 require that the entire value be computed. This is good
-because $2^{10^{14}} \approx 3 \times 10^{10^{13}}$ (that is, it has $10^13$
+because $2^{10^{14}} \approx 3 \times 10^{10^{13}}$ (that is, it has $10^{13}$
 digits all together). Fortunately, for all values scanned so far, an odd digit
 occurs in the least significant 46 digits. This means that computing just the 50
 or 60 least significant digits will suffice to eliminate candidate values.
@@ -66,7 +66,7 @@ are distributed in ascending order so that the work of computing the starting
 point can be re-used by each worker.
 
 Even without multi-threading, the system is very fast. Searching the
-first $10^14$ values of $2^n$ took about 10 hours using a single core on my
+first $10^{14}$ values of $2^n$ took about 10 hours using a single core on my
 laptop.
 
 # Running the code
@@ -135,7 +135,6 @@ program `simple/scan-simple.go`. This allows the following options:
 | -verbose    | Provide progress information                                     |
 | -limit n    | How many candidates to search. Use M, G, T, P, or E as desired   |
 | -digits d   | How many digits to check for even digits                         |
-| ----------- | ---------------------------------------------------------------- |
 
 This program is single-thread and can scan about 5M candidates per second.
 
@@ -150,7 +149,6 @@ sieve is used. The following options are allowed:
 | -digits d   | How many digits to check for even digits                         |
 | -threads t  | How many threads to use to check candidates                      |
 | -sieve s    | The name of a JSON file containing a sieve definition.           |
-| ----------- | ---------------------------------------------------------------- |
 
 This scanner can scan about 10M candidates per second per thread with
 `cycle-002.json` (the standard 2-digit sieve) but accelerates to 85M candidates
