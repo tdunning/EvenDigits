@@ -185,7 +185,13 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 	}()
 
 	mask := big.NewInt(1)
-	mask.Set(mask)
+	mask.Set(conf.Mask)
+
+	bumps := make([]*big.Int, len(conf.Bumps))
+	for i, bump := range conf.Bumps {
+		bumps[i] = big.NewInt(1)
+		bumps[i].Set(bump)
+	}
 
 	cycleSize := len(conf.Steps) - 1
 
@@ -223,7 +229,7 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 
 		for i, dn := range conf.Steps[:cycleSize] {
 			n += dn
-			z.Mul(z, conf.Bumps[i]).Mod(z, mask)
+			z.Mul(z, bumps[i]).Mod(z, mask)
 			r.Tests++
 			if even := checkDigits(z); even == -1 {
 				solutions = append(solutions, n)
@@ -238,7 +244,7 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 			}
 		}
 		n += conf.Steps[cycleSize]
-		z.Mul(z, conf.Bumps[cycleSize]).Mod(z, mask)
+		z.Mul(z, bumps[cycleSize]).Mod(z, mask)
 	}
 	r.Success = true
 	if conf.Verbose {
