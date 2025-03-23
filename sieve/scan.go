@@ -92,7 +92,7 @@ func main() {
 	bumps := make([]*big.Int, len(steps))
 	tmp := big.NewInt(0)
 	for i, step := range steps {
-		bumps[i] = big.NewInt(0)
+		bumps[i] = big.NewInt(1)
 		tmp.SetUint64(2)
 		pow(bumps[i], tmp, step, mask)
 	}
@@ -116,11 +116,11 @@ func main() {
 
 	totalBatches := (limit + config.Length - 1) / config.Length
 
-	dispatch := make(chan uint64, 2)
+	dispatch := make(chan uint64, *threads)
 	go dispatcher(totalBatches, dispatch, *verbose)
 
 	fmt.Printf("%d threads\n", *threads)
-	results := make(chan Result)
+	results := make(chan Result, *threads)
 	for i := 0; i < *threads; i++ {
 		go worker(i, dispatch, conf, config, results)
 	}
@@ -184,15 +184,31 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 		results <- r
 	}()
 
+	mask := big.NewInt(1)
+	mask.Set(mask)
+
 	cycleSize := len(conf.Steps) - 1
 
 	jobs := 0
 	n := uint64(0)
 	z := big.NewInt(1)
-	tmp1 := big.NewInt(0)
-	tmp2 := big.NewInt(0)
+	tmp := big.NewInt(0)
+	tick := time.NewTicker(500 * time.Millisecond)
 	for {
-		job, ok := <-dispatch
+		var (
+			job uint64
+			ok  bool
+		)
+
+		messageAvailable := false
+		for !messageAvailable {
+			select {
+			case <-tick.C:
+				log.Printf("worker %d tick %d\n", thread, jobs)
+			case job, ok = <-dispatch:
+				messageAvailable = true
+			}
+		}
 		jobs++
 		if !ok {
 			if conf.Verbose {
@@ -201,15 +217,13 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 			break
 		}
 		next := job * config.Length
-		tmp1.SetUint64(1)
-		tmp2.SetUint64(2)
-		pow(tmp1, tmp2, next-n, conf.Mask)
-		z.Mul(z, tmp1)
+		tmp.SetUint64(2)
+		pow(z, tmp, next-n, mask)
 		n = next
 
 		for i, dn := range conf.Steps[:cycleSize] {
 			n += dn
-			z.Mul(z, conf.Bumps[i]).Mod(z, conf.Mask)
+			z.Mul(z, conf.Bumps[i]).Mod(z, mask)
 			r.Tests++
 			if even := checkDigits(z); even == -1 {
 				solutions = append(solutions, n)
@@ -224,7 +238,7 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 			}
 		}
 		n += conf.Steps[cycleSize]
-		z.Mul(z, conf.Bumps[cycleSize]).Mod(z, conf.Mask)
+		z.Mul(z, conf.Bumps[cycleSize]).Mod(z, mask)
 	}
 	r.Success = true
 	if conf.Verbose {
@@ -238,7 +252,9 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 func dispatcher(totalBatches uint64, dispatch chan uint64, verbose bool) {
 	step := (totalBatches + 19) / 20
 	t0 := time.Now()
-	for i := uint64(0); i < totalBatches; i++ {
+	for i := uint64(0); i < totalBatches; {
+		dispatch <- i
+		i++
 		if verbose && i%step == 0 {
 			t1 := time.Now()
 			total := t1.Sub(t0).Seconds()
@@ -252,7 +268,6 @@ func dispatcher(totalBatches uint64, dispatch chan uint64, verbose bool) {
 				float64(totalBatches-i)*dt,
 			)
 		}
-		dispatch <- i
 	}
 	if verbose {
 		log.Printf("sender: completed")
@@ -295,9 +310,8 @@ func checkDigits(z *big.Int) int {
 	return -1
 }
 
-// pow sets `z = m^n mod mask`. The value of m is destroyed in the process.
+// pow sets `z = (z * m^n) mod mask`. The value of m is destroyed in the process.
 func pow(z *big.Int, m *big.Int, n uint64, mask *big.Int) {
-	z.SetInt64(1)
 	if n == 0 {
 		return
 	}
@@ -307,6 +321,8 @@ func pow(z *big.Int, m *big.Int, n uint64, mask *big.Int) {
 			z.Mod(z, mask)
 		}
 		n = n / 2
-		m.Mul(m, m)
+		tmp := big.NewInt(0)
+		tmp.Set(m)
+		m.Mul(m, tmp)
 	}
 }
