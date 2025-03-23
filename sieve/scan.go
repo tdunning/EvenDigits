@@ -134,9 +134,9 @@ func main() {
 		if !ok {
 			log.Fatalf("Results channel closed ... should be impossible")
 		}
-		log.Printf("thread %d result\n", r.ID)
+		log.Printf("thread %d result (max = %d)\n", r.ID, r.MaxEven)
 		if !r.Success {
-			log.Fatalf("Workeder %d failed", r.ID)
+			log.Fatalf("Worker %d failed", r.ID)
 		}
 
 		for _, solution := range r.Solutions {
@@ -173,12 +173,11 @@ func main() {
 // worker is where the actual testing happens
 func worker(thread int, dispatch chan uint64, conf *Configuration, config LoopAccelerator, results chan Result) {
 	solutions := []uint64{}
-	records := []Record{}
 	r := Result{
 		ID:        thread,
 		Success:   false,
 		Solutions: solutions,
-		Records:   records,
+		Records:   []Record{},
 		MaxEven:   0,
 		Tests:     0,
 	}
@@ -236,7 +235,7 @@ func worker(thread int, dispatch chan uint64, conf *Configuration, config LoopAc
 			} else {
 				if even > r.MaxEven {
 					r.MaxEven = even
-					records = append(records, Record{
+					r.Records = append(r.Records, Record{
 						Z:      n,
 						Digits: even,
 					})
