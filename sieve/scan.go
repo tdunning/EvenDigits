@@ -1,7 +1,9 @@
 package main
 
 import (
+	"EvenDigits/common"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -43,9 +45,10 @@ type LoopAccelerator struct {
 }
 
 type Configuration struct {
-	Steps []uint64
-	Bumps []*big.Int
-	Mask  *big.Int
+	Steps   []uint64
+	Bumps   []*big.Int
+	Mask    *big.Int
+	Verbose bool
 }
 
 type Result struct {
@@ -63,12 +66,20 @@ type Record struct {
 }
 
 func main() {
+	verbose := flag.Bool("verbose", false, "verbose output")
+	digits := flag.Int("digits", 50, "Number of digits to use in search")
+	threads := flag.Int("threads", runtime.NumCPU()/2, "Number of threads to use in search")
+	sieve := flag.String("sieve", "cycle-012.json", "JSON file containing a sieve definition")
+	limitString := flag.String("limit", "10G", "Maximum value of N to search. Can use M, G, T, P and E as power of ten")
+	flag.Parse()
+	limit := common.DecodeLimit(limitString, verbose)
+
 	mask := big.NewInt(1)
-	for i := 0; i < 55; i++ {
+	for i := 0; i < *digits; i++ {
 		mask.Mul(mask, ten)
 	}
 
-	config, err := readAccelerator("cycle-009.json")
+	config, err := readAccelerator(*sieve)
 
 	steps := []uint64{}
 	c0 := uint64(0)
@@ -87,9 +98,10 @@ func main() {
 	}
 
 	conf := Configuration{
-		Steps: steps,
-		Bumps: bumps,
-		Mask:  mask,
+		Verbose: *verbose,
+		Steps:   steps,
+		Bumps:   bumps,
+		Mask:    mask,
 	}
 
 	solutions := []uint64{}
@@ -102,21 +114,20 @@ func main() {
 	}
 	t0 := time.Now()
 
-	limit := uint64(10_000_000_000)
 	totalBatches := (limit + config.Length - 1) / config.Length
 
 	dispatch := make(chan uint64, 2)
-	go dispatcher(totalBatches, dispatch)
+	go dispatcher(totalBatches, dispatch, *verbose)
 
-	fmt.Printf("%d threads\n", runtime.NumCPU()/4)
+	fmt.Printf("%d threads\n", *threads)
 	results := make(chan Result)
-	for i := 0; i < runtime.NumCPU()/4; i++ {
+	for i := 0; i < *threads; i++ {
 		go worker(i, dispatch, conf, config, results)
 	}
 
 	tests := 0
 	records := []Record{}
-	for i := 0; i < runtime.NumCPU()/4; i++ {
+	for i := 0; i < *threads; i++ {
 		r, ok := <-results
 		if !ok {
 			log.Fatalf("Results channel closed ... should be impossible")
@@ -184,7 +195,9 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 		job, ok := <-dispatch
 		jobs++
 		if !ok {
-			log.Printf("breaking %d\n", thread)
+			if conf.Verbose {
+				log.Printf("breaking %d\n", thread)
+			}
 			break
 		}
 		next := job * config.Length
@@ -214,23 +227,25 @@ func worker(thread int, dispatch chan uint64, conf Configuration, config LoopAcc
 		z.Mul(z, conf.Bumps[cycleSize]).Mod(z, conf.Mask)
 	}
 	r.Success = true
-	log.Printf("exiting %d\n", thread)
+	if conf.Verbose {
+		log.Printf("exiting %d\n", thread)
+	}
 }
 
 // dispatcher sends small batches of work to the workers via a channel
 // each work is iteration through the repetition cycle we got from the
 // cycle detector program.
-func dispatcher(totalBatches uint64, dispatch chan uint64) {
-	step := (totalBatches + 99) / 100
+func dispatcher(totalBatches uint64, dispatch chan uint64, verbose bool) {
+	step := (totalBatches + 19) / 20
 	t0 := time.Now()
 	for i := uint64(0); i < totalBatches; i++ {
-		if i%step == 0 {
+		if verbose && i%step == 0 {
 			t1 := time.Now()
 			total := t1.Sub(t0).Seconds()
 			dt := (total + 0.5) / float64(i+1)
 
 			log.Printf(
-				"sender: %6d (%.0f%%, %.1f %.1f) %.1f seconds remaining",
+				"sender: %6d (%10.0f%%, %.1f %.1f) %.1f seconds remaining",
 				i,
 				float64(i*100)/float64(totalBatches),
 				dt*1000, total*1000,
@@ -239,7 +254,9 @@ func dispatcher(totalBatches uint64, dispatch chan uint64) {
 		}
 		dispatch <- i
 	}
-	log.Printf("sender: completed")
+	if verbose {
+		log.Printf("sender: completed")
+	}
 	close(dispatch)
 }
 

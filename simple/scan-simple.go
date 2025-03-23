@@ -1,8 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"EvenDigits/common"
+	"flag"
 	"github.com/shopspring/decimal"
+	"log"
+	"time"
 )
 
 /*
@@ -21,21 +24,32 @@ cases we need to examine by a further factor of 5.
 */
 
 func main() {
+	verbose := flag.Bool("verbose", false, "verbose output")
+	limitString := flag.String(
+		"limit",
+		"10M",
+		"Maximum value of N to search. Can use M, G, T, P and E as power of ten",
+	)
+	digits := flag.Int64("digits", 50, "Number of digits to retain in search")
+	flag.Parse()
+	limit := common.DecodeLimit(limitString, verbose)
+
 	zero := decimal.NewFromInt(0)
 	two := decimal.NewFromInt(2)
 	ten := decimal.NewFromInt(10)
-	mask := ten.Pow(decimal.NewFromInt(35))
+	mask := ten.Pow(decimal.NewFromInt(*digits))
 
-	steps := []int64{3, 3, 5, 8}
+	steps := []uint64{3, 3, 5, 8}
 	bumps := make([]decimal.Decimal, len(steps))
 	for i, step := range steps {
 		bumps[i] = decimal.NewFromInt(1 << step)
 	}
 
-	solutions := []int64{1, 2}
+	solutions := []uint64{1, 2}
 
+	t0 := time.Now()
 	z := decimal.NewFromInt(1)
-	for n := int64(0); n < 10_000_000; {
+	for n := uint64(0); n < limit; {
 		for i, dn := range steps {
 			n += dn
 			z = z.Mul(bumps[i]).Mod(mask)
@@ -54,6 +68,17 @@ func main() {
 		}
 		n++
 		z = z.Mul(two)
+
+		if *verbose && n%10_000_000 == 0 {
+			t := time.Since(t0).Seconds()
+			rate := float64(n) / t
+			log.Printf(
+				"%6dM candidates searched, %d solutions found, %.3fs remaining\n",
+				n/1_000_000,
+				len(solutions),
+				float64(limit-n)/rate,
+			)
+		}
 	}
-	fmt.Printf("solutions = %v\n", solutions)
+	log.Printf("solutions = %v\n", solutions)
 }
