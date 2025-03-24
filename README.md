@@ -125,6 +125,15 @@ to the next. Note that the mask in the cycle file only defines the size of the
 cycle and is different from the mask used in the search program where the mask
 defines how many significant digits are used to disqualify candidate values.
 
+## Commentary on Sieves
+
+Elementary analysis of the product group formed by calculating $2^n \mod 10^k$
+shows that the length of cycle in each sieve should be $4 \times 5^{k-1}$. If
+the digits are randomly distributed, the fraction of values that pass the sieve
+would be $2^{-k}$. Both of these are born out in the observed sieves. A
+consequence of this is that this kind of sieve will never stop all candidates,
+no matter how large $k$ gets.
+
 ## Running the Search
 
 You can run a simplified search that only uses the 2-digit sieve using the
@@ -160,41 +169,42 @@ thread with `cycle-013.json`.
 Running on a single core of an older server, these were the results using a 15
 digit sieve. Per core, this machine is a bit slower than a single ARM core on my
 laptop but the server has much more memory which becomes important with the
-larger sieve basis.
+larger sieve basis. This is a run testing $10^15$ values.
 
 ```
-host:~/EvenDigits$ go run sieve/scan.go -threads 1 -sieve cycle-015.json -limit 100T -verbose -digits 50 
-2025/03/22 21:18:31 Limit: 100.0T
+dunning@host:~/EvenDigits$ go run sieve/scan.go -threads 1 -sieve cycle-015.json -limit 1P -verbose -digits 55
+2025/03/23 00:39:14 Limit: 1000.0T
 1 threads
-2025/03/22 21:24:22 sender:    205 (         5%, 1418.2 291639.9) 5518.0 seconds remaining
-2025/03/22 21:29:14 sender:    410 (        10%, 1422.2 584022.5) 5242.2 seconds remaining
-2025/03/22 21:34:08 sender:    615 (        15%, 1427.1 878568.0) 4967.6 seconds remaining
-2025/03/22 21:38:58 sender:    820 (        20%, 1423.2 1167949.3) 4662.4 seconds remaining
-2025/03/22 21:43:46 sender:   1025 (        25%, 1419.7 1456143.0) 4360.0 seconds remaining
-2025/03/22 21:48:35 sender:   1230 (        30%, 1417.9 1744977.5) 4063.8 seconds remaining
-2025/03/22 21:53:23 sender:   1435 (        35%, 1416.4 2033406.0) 3769.0 seconds remaining
-2025/03/22 21:58:13 sender:   1640 (        40%, 1415.9 2323024.2) 3477.5 seconds remaining
-2025/03/22 22:03:01 sender:   1845 (        45%, 1414.9 2611314.1) 3184.8 seconds remaining
-2025/03/22 22:07:50 sender:   2050 (        50%, 1414.3 2900218.0) 2893.6 seconds remaining
-2025/03/22 22:12:37 sender:   2255 (        55%, 1413.1 3187541.3) 2601.6 seconds remaining
-2025/03/22 22:17:25 sender:   2460 (        60%, 1412.4 3475293.9) 2310.6 seconds remaining
-2025/03/22 22:22:14 sender:   2665 (        65%, 1412.1 3764148.7) 2020.7 seconds remaining
-2025/03/22 22:27:03 sender:   2870 (        70%, 1411.7 4052599.5) 1730.8 seconds remaining
-2025/03/22 22:31:50 sender:   3075 (        75%, 1411.2 4340397.5) 1440.9 seconds remaining
-2025/03/22 22:36:38 sender:   3280 (        80%, 1410.8 4628438.1) 1151.2 seconds remaining
-2025/03/22 22:41:26 sender:   3485 (        85%, 1410.5 4916472.7) 861.8 seconds remaining
-2025/03/22 22:46:14 sender:   3690 (        90%, 1410.1 5204284.6) 572.5 seconds remaining
-2025/03/22 22:51:03 sender:   3895 (        95%, 1410.1 5493340.5) 283.4 seconds remaining
-2025/03/22 22:55:46 sender: completed
-2025/03/22 22:55:49 breaking 0
-2025/03/22 22:55:49 exiting 0
-2025/03/22 22:55:49 thread 0 result
-17304993923.7 test/s, total time 5778.7 s
-Limit: 100000000000000
-Tests: 2888794112
+2025/03/23 01:29:24 sender:   2048 (         5%, 1440.3 2950614.5) 56043.8 seconds remaining
+2025/03/23 02:18:30 sender:   4096 (        10%, 1439.4 5896521.3) 53060.2 seconds remaining
+2025/03/23 03:07:33 sender:   6144 (        15%, 1438.6 8839697.1) 50086.3 seconds remaining
+2025/03/23 03:56:43 sender:   8192 (        20%, 1439.1 11789698.4) 47155.0 seconds remaining
+2025/03/23 04:45:56 sender:  10240 (        25%, 1439.7 14743024.7) 44226.3 seconds remaining
+2025/03/23 05:35:00 sender:  12288 (        30%, 1439.3 17686717.1) 41266.8 seconds remaining
+2025/03/23 06:24:00 sender:  14336 (        35%, 1438.7 20626742.5) 38305.1 seconds remaining
+2025/03/23 07:12:58 sender:  16384 (        40%, 1438.2 23564470.4) 35345.3 seconds remaining
+2025/03/23 08:01:55 sender:  18432 (        45%, 1437.8 26501718.5) 32389.8 seconds remaining
+2025/03/23 08:50:57 sender:  20480 (        50%, 1437.6 29443578.9) 29442.6 seconds remaining
+2025/03/23 09:39:56 sender:  22528 (        55%, 1437.4 32382870.7) 26494.3 seconds remaining
+2025/03/23 10:28:55 sender:  24576 (        60%, 1437.2 35321932.1) 23547.3 seconds remaining
+2025/03/23 11:17:55 sender:  26624 (        65%, 1437.1 38262431.1) 20602.3 seconds remaining
+2025/03/23 12:06:54 sender:  28672 (        70%, 1436.9 41201059.6) 17657.2 seconds remaining
+2025/03/23 12:55:54 sender:  30720 (        75%, 1436.8 44140753.1) 14713.3 seconds remaining
+2025/03/23 13:44:51 sender:  32768 (        80%, 1436.7 47078455.3) 11769.4 seconds remaining
+2025/03/23 14:33:50 sender:  34816 (        85%, 1436.6 50017074.8) 8826.4 seconds remaining
+2025/03/23 15:22:51 sender:  36864 (        90%, 1436.6 52958163.5) 5884.1 seconds remaining
+2025/03/23 16:11:54 sender:  38912 (        95%, 1436.6 55901109.5) 2942.1 seconds remaining
+2025/03/23 17:00:54 sender:  40960 (       100%, 1436.5 58840955.8) 0.0 seconds remaining
+2025/03/23 17:00:54 sender: completed
+2025/03/23 17:00:57 breaking 0
+2025/03/23 17:00:57 exiting 0
+2025/03/23 17:00:57 thread 0 result (max = 52)
+16994150355.1 test/s, total time 58843.8 s
+Limit: 1000000000000000
+Tests: 28887941120
 Gain over brute: 34616.520293.1
 solutions = [1 2 3 6 11]
-host:~/EvenDigits$ 
+dunning@host:~/EvenDigits$ 
 ```
 
 # Known Defects
