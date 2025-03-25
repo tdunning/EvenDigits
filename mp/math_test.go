@@ -10,7 +10,7 @@ import (
 
 func TestInt320_AddSmall(t *testing.T) {
 	x := uint64(rand.Uint32())
-	a := Int256{}
+	a := UInt256{}
 	a.AddSmall(x)
 	for i := 1; i < 8; i++ {
 		assert.Equal(t, uint64(0), a.content[i])
@@ -41,7 +41,7 @@ func TestInt320_MulSmall(t *testing.T) {
 	u0 := uint64(rand.Uint32())
 	u1 := uint64(rand.Uint32())
 	u2 := uint64(rand.Uint32())
-	a := Int256{[8]uint64{u0, u1, u2}}
+	a := UInt256{[8]uint64{u0, u1, u2}}
 
 	a.MulSmall(x)
 	t0 := x * u0
@@ -53,7 +53,7 @@ func TestInt320_MulSmall(t *testing.T) {
 }
 
 func TestInt320_DivRemSmall2(t *testing.T) {
-	a := Int256{}
+	a := UInt256{}
 	a.AddSmall(uint64(5003))
 	n := a.DivModSmall(1000)
 	assert.Equal(t, uint64(3), n)
@@ -88,13 +88,13 @@ func TestInt320_DivRemSmall2(t *testing.T) {
 
 func Test_DivRemSmall(t *testing.T) {
 	// 2^32 % 5 == 6
-	a := Int256{[8]uint64{0, 1, 0, 0, 0, 0, 0, 0}}
+	a := UInt256{[8]uint64{0, 1, 0, 0, 0, 0, 0, 0}}
 	r := a.DivModSmall(10)
 	assert.Equal(t, uint64(6), r)
 	assert.Equal(t, uint64(429496729), a.content[0])
 	assert.Equal(t, uint64(0), a.content[1])
 
-	a = Int256{[8]uint64{1, 1, 1, 1, 0, 0, 0, 0}}
+	a = UInt256{[8]uint64{1, 1, 1, 1, 0, 0, 0, 0}}
 	r = a.DivModSmall(10000)
 	assert.Equal(t, uint64(9249), r)
 	assert.Equal(t, uint64(3828104350), a.content[0])
@@ -104,7 +104,7 @@ func Test_DivRemSmall(t *testing.T) {
 
 	// floor(pi * 10^70) takes up about 234 bits
 	piDigits := "31415926535897932384626433832795028841971693993751058209749445923078164"
-	pi := Int256{
+	pi := UInt256{
 		[8]uint64{
 			3441197076, 2304935270, 1582441405, 2787492932, 696018738, 153849261, 1208944667, 1165,
 		},
@@ -122,11 +122,15 @@ func Test_DivRemSmall(t *testing.T) {
 
 var (
 	// pi * 10^70
-	pi70 = Int256{[8]uint64{
+	pi70 = UInt256{[8]uint64{
 		3441197076, 2304935270, 1582441405, 2787492932, 696018738, 153849261, 1208944667, 1165,
 	}}
+	pi100 = UInt512{[16]uint64{
+		1454363223, 2483199816, 3756646060, 3135356928, 1069813062, 2158551865, 1748634935,
+		27139563, 1418441833, 703265957, 1841414616, 3411550463, 79731, 0, 0, 0,
+	}}
 	// e * 10^70
-	e70 = Int256{[8]uint64{
+	e70 = UInt256{[8]uint64{
 		2838434750, 2938999430, 284363889, 1134976221, 2540683272, 1877661008, 1145758728, 1008,
 	}}
 )
@@ -135,7 +139,7 @@ func Test_Mod0(t *testing.T) {
 	a := pi70
 	b := e70
 	a.Mod(b)
-	aModB := Int256{[8]uint64{
+	aModB := UInt256{[8]uint64{
 		602762326, 3660903136, 1298077515, 1652516711, 2450302762, 2571155548, 63185938, 157,
 	}}
 	assert.Equal(t, 0, a.Cmp(aModB))
@@ -144,12 +148,12 @@ func Test_Mod0(t *testing.T) {
 func Test_Mod1(t *testing.T) {
 	a := pi70
 	// pi * 10^55 - 1000
-	b := Int256{
+	b := UInt256{
 		[8]uint64{2079167289, 1683576302, 4089510878, 392375461, 960694935, 21495649, 0, 0},
 	}
 	a.Mod(b)
 	// a % b = 1000749445923078164
-	aModB := Int256{
+	aModB := UInt256{
 		[8]uint64{2708078612, 233005137, 0, 0, 0, 0, 0, 0},
 	}
 	assert.Equal(t, 0, a.Cmp(aModB))
@@ -158,9 +162,44 @@ func Test_Mod1(t *testing.T) {
 func Test_Mod2(t *testing.T) {
 	a := pi70
 	// pi70 / 2^64 - 1000
-	b := Int256{[8]uint64{1582440405, 2787492932, 696018738, 153849261, 1208944667, 1165, 0, 0}}
+	b := UInt256{[8]uint64{1582440405, 2787492932, 696018738, 153849261, 1208944667, 1165, 0, 0}}
 	a.Mod(b)
-	aModB := Int256{[8]uint64{
+	aModB := UInt256{[8]uint64{
+		3441197076, 2304935270, 1000, 0, 0, 0, 0, 0,
+	}}
+	assert.Equal(t, 0, a.Cmp(aModB))
+}
+
+func Test_Mod256_0(t *testing.T) {
+	a := pi100
+	b := e70
+	a.Mod256(b)
+	aModB := UInt256{[8]uint64{
+		1812683721, 2559088218, 2015340409, 921934341, 1001620618, 3020082437, 3700726681, 586,
+	}}
+	assert.Equal(t, 0, a.Cmp256(aModB))
+}
+
+func Test_Mod256_1(t *testing.T) {
+	a := pi70
+	// pi * 10^55 - 1000
+	b := UInt256{
+		[8]uint64{2079167289, 1683576302, 4089510878, 392375461, 960694935, 21495649, 0, 0},
+	}
+	a.Mod(b)
+	// a % b = 1000749445923078164
+	aModB := UInt256{
+		[8]uint64{2708078612, 233005137, 0, 0, 0, 0, 0, 0},
+	}
+	assert.Equal(t, 0, a.Cmp(aModB))
+}
+
+func Test_Mod256_2(t *testing.T) {
+	a := pi70
+	// pi70 / 2^64 - 1000
+	b := UInt256{[8]uint64{1582440405, 2787492932, 696018738, 153849261, 1208944667, 1165, 0, 0}}
+	a.Mod(b)
+	aModB := UInt256{[8]uint64{
 		3441197076, 2304935270, 1000, 0, 0, 0, 0, 0,
 	}}
 	assert.Equal(t, 0, a.Cmp(aModB))
