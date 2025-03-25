@@ -5,27 +5,20 @@ import (
 	"math"
 )
 
-type UInt[T any] interface {
-	MulSmall(uint64)
-	MulMod(T, mask T)
-	DivRemSmall(uint64) uint64
-	Mod(T)
-	//Pow(int, mask T)
-}
-
-type bits interface {
-	len() int
-	bits() []uint64
-}
-
+// Int256 is a 256-bit integer. These structures are entirely static and thus are
+// subject to copy semantics. Importantly, they can be allocated on the stack to
+// avoid GC pressure.
 type Int256 struct {
 	content [8]uint64
 }
 
+// Int512 is a 512-bit integer. Only limited operations are supported since these
+// are only used as temporary values in the implementation of ModMul for Int256.
 type Int512 struct {
 	content [16]uint64
 }
 
+// Cmp returns -1, 0 or 1 if a < b, a == b or a > b, respectively.
 func (a Int256) Cmp(b Int256) int {
 	for i := len(a.content) - 1; i >= 0; i-- {
 		if a.content[i] > b.content[i] {
@@ -38,6 +31,7 @@ func (a Int256) Cmp(b Int256) int {
 	return 0
 }
 
+// Cmp returns -1, 0 or 1 if a < b, a == b or a > b, respectively.
 func (a Int512) Cmp(b Int512) int {
 	for i := len(a.content) - 1; i >= 0; i-- {
 		if a.content[i] > b.content[i] {
@@ -50,6 +44,8 @@ func (a Int512) Cmp(b Int512) int {
 	return 0
 }
 
+// Cmp256 returns -1, 0 or 1 if a < b, a == b or a > b, respectively but a
+// is Int512 and b is Int256.
 func (a Int512) Cmp256(b Int256) int {
 	for i := len(a.content) - 1; i >= len(b.content); i-- {
 		if a.content[i] > 0 {
