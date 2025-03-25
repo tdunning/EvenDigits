@@ -209,13 +209,21 @@ dunning@host:~/EvenDigits$
 
 # Known Defects
 
-The code as it stands has a problem running in multi-core mode that seems to be
-related to accidental sharing of non-thread-safe memory structures, particular
-those from the `math/big` library.
-
-Currently, the code also has no unit tests which expose a risk that there might
-be remaining code errors.
-
-Finally, memory usage seems anomalously high. For the largest sieve, the running
-program consumes 5-6GB of main storage. This seems excessive, but no profiling
-has been done yet to understand the source.
+1) The code as it stands has a problem running in multi-core mode that seems to
+   be related to accidental sharing of non-thread-safe memory structures,
+   particular those from the `math/big` library.
+2) The code does not yet use the new extended precision library. That should
+   resolve the multi-threading issues and may be faster than the `math/big`
+   library. 
+3) Currently, outside of the extended precision math library the code has no
+   unit tests which expose a risk that there might be remaining code errors. 
+4) The cycle detector can be made much simpler and faster because we know how
+   many steps it takes to get into the cycle and we know that the cycle
+   with $n+1$ digits is composed of 5 cycles with $n$ digits. That means we only
+   have to examine the candidates from the $n$-digit cycles to find the roughly
+   50% that survive as $n+1$-digit sieve values. The $n$-digit cycles will, of
+   course, can be found faster by using the $n-1$-digit cycles. This will make
+   finding larger cycles thousands of times faster. 
+5) Finally, memory usage seems anomalously high. For the largest sieve, the
+   running program consumes 5-6GB of main storage. This seems excessive, but no
+   profiling has been done yet to understand the source.

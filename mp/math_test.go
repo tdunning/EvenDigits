@@ -170,6 +170,32 @@ func Test_Mod2(t *testing.T) {
 	assert.Equal(t, 0, a.Cmp(aModB))
 }
 
+func Test_Mod3(t *testing.T) {
+	a := pi70
+	b := UInt256{[8]uint64{
+		10000, 0, 0, 0, 0, 0, 0, 0,
+	}}
+	a.Mod(b)
+	aModB := UInt256{[8]uint64{
+		8164, 0, 0, 0, 0, 0, 0, 0,
+	}}
+	assert.Equal(t, 0, a.Cmp(aModB))
+}
+
+func Test_Mod4(t *testing.T) {
+	a := UInt256{[8]uint64{
+		489789245, 0, 0, 0, 0, 0, 0, 0,
+	}}
+	b := UInt256{[8]uint64{
+		10000, 0, 0, 0, 0, 0, 0, 0,
+	}}
+	a.Mod(b)
+	aModB := UInt256{[8]uint64{
+		9245, 0, 0, 0, 0, 0, 0, 0,
+	}}
+	assert.Equal(t, 0, a.Cmp(aModB))
+}
+
 func Test_Mod256_0(t *testing.T) {
 	a := pi100
 	b := e70
@@ -203,4 +229,56 @@ func Test_Mod256_2(t *testing.T) {
 		3441197076, 2304935270, 1000, 0, 0, 0, 0, 0,
 	}}
 	assert.Equal(t, 0, a.Cmp(aModB))
+}
+
+func Test_Mod256_3(t *testing.T) {
+	a := UInt512{}
+	for i := 0; i < len(pi70.content); i++ {
+		a.content[i] = pi70.content[i]
+	}
+	b := UInt256{[8]uint64{
+		10000, 0, 0, 0, 0, 0, 0, 0,
+	}}
+	a.Mod256(b)
+	aModB := UInt256{[8]uint64{
+		8164, 0, 0, 0, 0, 0, 0, 0,
+	}}
+	assert.Equal(t, 0, a.Cmp256(aModB))
+}
+
+func Test_Mod256_4(t *testing.T) {
+	a := UInt512{[16]uint64{
+		489789245, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+	}}
+	b := UInt256{[8]uint64{
+		10000, 0, 0, 0, 0, 0, 0, 0,
+	}}
+	a.Mod256(b)
+	aModB := UInt256{[8]uint64{
+		9245, 0, 0, 0, 0, 0, 0, 0,
+	}}
+	assert.Equal(t, 0, a.Cmp256(aModB))
+}
+
+func Test_Mul(t *testing.T) {
+	a := pi70
+	b := e70
+	c := a.Mul(b)
+	ref := UInt512{[16]uint64{
+		273976024, 1875349190, 1318867507, 1103398094, 4019063274, 1781510510, 2878157347, 2301794640,
+		1643369626, 2082417994, 819394330, 3670182513, 3030107420, 2537076616, 1174914, 0,
+	}}
+	assert.Equal(t, 0, c.Cmp512(ref))
+}
+
+func Test_PowMod(t *testing.T) {
+	a := UInt256{[8]uint64{2}}
+	mask := UInt256{[8]uint64{1}}
+	for i := 0; i < 55; i++ {
+		mask.MulSmall(10)
+	}
+	a.Pow256(10000, mask)
+	pow := UInt256{[8]uint64{0, 2449473536, 1386834847, 401415762, 3736286779, 2337887, 0, 0}}
+	assert.Equal(t, 0, a.Cmp(pow))
 }

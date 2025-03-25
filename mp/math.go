@@ -1,7 +1,6 @@
 package mp
 
 import (
-	"fmt"
 	"math"
 )
 
@@ -31,8 +30,8 @@ func (a UInt256) Cmp(b UInt256) int {
 	return 0
 }
 
-// Cmp256 returns -1, 0 or 1 if a < b, a == b or a > b, respectively but a
-// is UInt512 and b is UInt256.
+// Cmp256 returns -1, 0 or 1 if a < b, a == b or a > b, respectively but `a`
+// is UInt512 and `b` is UInt256.
 func (a UInt512) Cmp256(b UInt256) int {
 	for i := len(a.content) - 1; i >= len(b.content); i-- {
 		if a.content[i] > 0 {
@@ -53,7 +52,7 @@ func (a UInt512) Cmp256(b UInt256) int {
 
 // MulSmall destructively multiplies a large value by a small one. The
 // destination value must be normalized and will be normalized again upon return.
-// The multiplier should be limited to `[0..math.MaxUint32]`
+// The multiplier should be limited to `[0...math.MaxUint32]`
 func (a *UInt256) MulSmall(b uint64) {
 	if b > math.MaxUint32 {
 		panic("b > math.MaxUint16")
@@ -125,14 +124,11 @@ func (a *UInt256) Mod(b UInt256) {
 		}
 	}
 
-	// i tracks the last non-zero element of a
+	// the value `i` tracks the last non-zero element of a
 	for i := len(a.content) - 1; i >= j; {
 		if a.content[i] == 0 {
 			i--
 			continue
-		}
-		if i == j {
-			fmt.Printf("pause here\n")
 		}
 		if i == j && a.Cmp(b) <= 0 {
 			// our work here is done
@@ -156,9 +152,14 @@ func (a *UInt256) Mod(b UInt256) {
 				offset = i - j
 			}
 		} else {
-			ax = a.content[i]
+			if i > 0 {
+				ax = (a.content[i] << 32) + a.content[i-1]
+				offset = i - j - 1
+			} else {
+				ax = a.content[i]
+				offset = i - j
+			}
 			bx = b.content[j]
-			offset = i - j
 		}
 
 		m = ax / (bx + 1)
@@ -198,7 +199,7 @@ func (a *UInt512) Mod256(b UInt256) {
 		}
 	}
 
-	// i tracks the last non-zero element of a
+	// `i` tracks the last non-zero element of a
 	for i := len(a.content) - 1; i >= j; {
 		if a.content[i] == 0 {
 			i--
@@ -216,7 +217,6 @@ func (a *UInt512) Mod256(b UInt256) {
 		)
 
 		if j > 0 {
-			// assert i > 0 because a > b
 			if a.content[i] < b.content[j] {
 				ax = (a.content[i] << 32) + a.content[i-1]
 				bx = b.content[j]
@@ -227,9 +227,14 @@ func (a *UInt512) Mod256(b UInt256) {
 				offset = i - j
 			}
 		} else {
-			ax = a.content[i]
+			if i > 0 {
+				ax = (a.content[i] << 32) + a.content[i-1]
+				offset = i - j - 1
+			} else {
+				ax = a.content[i]
+				offset = i - j
+			}
 			bx = b.content[j]
-			offset = i - j
 		}
 
 		m = ax / (bx + 1)
@@ -267,6 +272,18 @@ func (a *UInt512) Mod256(b UInt256) {
 	}
 }
 
+func (a UInt512) Cmp512(b UInt512) int {
+	for i := len(a.content) - 1; i >= 0; i-- {
+		if a.content[i] > b.content[i] {
+			return 1
+		}
+		if a.content[i] < b.content[i] {
+			return -1
+		}
+	}
+	return 0
+}
+
 func (a UInt256) Mul(b UInt256) UInt512 {
 	r := UInt512{}
 	for i, ax := range a.content {
@@ -288,10 +305,23 @@ func (a UInt256) Mul(b UInt256) UInt512 {
 	return r
 }
 
-func (a UInt256) MulMod(b UInt256) {
+func (a *UInt256) MulMod(b, mask UInt256) {
 	z := a.Mul(b)
-	z.Mod256(b)
+	z.Mod256(mask)
 	for i := 0; i < len(a.content); i++ {
 		a.content[i] = z.content[i]
 	}
+}
+
+func (a *UInt256) Pow256(n int, mask UInt256) {
+	m := *a
+	r := UInt256{[8]uint64{1}}
+	for n > 0 {
+		if n&1 == 1 {
+			r.MulMod(m, mask)
+		}
+		m.MulMod(m, mask)
+		n = n >> 1
+	}
+	*a = r
 }
