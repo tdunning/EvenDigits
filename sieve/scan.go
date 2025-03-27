@@ -2,12 +2,13 @@ package main
 
 import (
 	"EvenDigits/common"
+	"EvenDigits/mp"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"log"
-	"math/big"
+	"math"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -31,9 +32,8 @@ that n mod 20 must be 3, 6, 11, or 19 for n > 2. This decreases the number of
 cases we need to examine by a further factor of 5.
 */
 var (
-	zero = big.NewInt(0)
-	two  = big.NewInt(2)
-	ten  = big.NewInt(10)
+	zero = mp.UInt256{}
+	two  = mp.UInt256{[8]uint64{2}}
 )
 
 type LoopAccelerator struct {
@@ -49,8 +49,8 @@ type LoopAccelerator struct {
 type Configuration struct {
 	mu      sync.Mutex
 	Steps   []uint64
-	Bumps   []*big.Int
-	Mask    *big.Int
+	Bumps   []mp.UInt256
+	Mask    mp.UInt256
 	Verbose bool
 }
 
@@ -83,7 +83,11 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		pprof.StartCPUProfile(f)
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
 		defer pprof.StopCPUProfile()
 	}
 	defer func() {
@@ -93,19 +97,25 @@ func main() {
 				log.Fatal(err)
 			}
 			runtime.GC()
-			pprof.WriteHeapProfile(f)
-			f.Close()
+			err = pprof.WriteHeapProfile(f)
+			if err != nil {
+				log.Fatal(err)
+			}
+			_ = f.Close()
 		}
 	}()
 
 	limit := common.DecodeLimit(limitString, verbose)
 
-	mask := big.NewInt(1)
+	mask := mp.UInt256{[8]uint64{1}}
 	for i := 0; i < *digits; i++ {
-		mask.Mul(mask, ten)
+		mask.MulSmall(10)
 	}
 
 	config, err := readAccelerator(*sieve)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	steps := []uint64{}
 	c0 := uint64(0)
@@ -115,12 +125,10 @@ func main() {
 	}
 	steps = append(steps, config.Length-c0)
 
-	bumps := make([]*big.Int, len(steps))
-	tmp := big.NewInt(0)
+	bumps := make([]mp.UInt256, len(steps))
 	for i, step := range steps {
-		bumps[i] = big.NewInt(1)
-		tmp.SetUint64(2)
-		pow(bumps[i], tmp, step, mask)
+		bumps[i] = two
+		bumps[i].Pow256(mp.UInt256{[8]uint64{step}}, mask)
 	}
 
 	conf := Configuration{
@@ -131,13 +139,13 @@ func main() {
 	}
 
 	solutions := []uint64{}
-	z := big.NewInt(2)
-	zdig := big.NewInt(0)
+	z := two
 	for n := uint64(1); n <= config.Leadin; n++ {
-		if even := checkDigits(z, zdig); even == -1 {
+		if even := checkDigits(z); even == -1 {
+			fmt.Printf("%s is even\n", z.String())
 			solutions = append(solutions, n)
 		}
-		z.Mul(z, two).Mod(z, mask)
+		z.MulMod(two, mask)
 	}
 	t0 := time.Now()
 
@@ -176,7 +184,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer fr.Close()
+	defer func(fr *os.File) {
+		_ = fr.Close()
+	}(fr)
 
 	slices.Sort(solutions)
 	slices.SortFunc(records, func(a, b Record) int {
@@ -186,8 +196,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fr.Write(txt)
-	fr.Close()
+	_, _ = fr.Write(txt)
+	_ = fr.Close()
 	dt := time.Since(t0).Seconds()
 	fmt.Printf("%.1f test/s, total time %.1f s\n", float64(limit)/dt, dt)
 	fmt.Printf("Limit: %d\nTests: %d\n", limit, tests)
@@ -211,13 +221,11 @@ func worker(thread int, dispatch chan uint64, conf *Configuration, config LoopAc
 	}()
 
 	conf.mu.Lock()
-	mask := big.NewInt(1)
-	mask.Set(conf.Mask)
+	mask := conf.Mask
 
-	bumps := make([]*big.Int, len(conf.Bumps))
+	bumps := make([]mp.UInt256, len(conf.Bumps))
 	for i, bump := range conf.Bumps {
-		bumps[i] = big.NewInt(1)
-		bumps[i].Set(bump)
+		bumps[i] = bump
 	}
 
 	steps := make([]uint64, len(conf.Steps))
@@ -230,8 +238,7 @@ func worker(thread int, dispatch chan uint64, conf *Configuration, config LoopAc
 
 	jobs := 0
 	n := uint64(0)
-	z := big.NewInt(1)
-	tmp := big.NewInt(0)
+	z := mp.UInt256{[8]uint64{1}}
 	for {
 		var (
 			job uint64
@@ -247,17 +254,17 @@ func worker(thread int, dispatch chan uint64, conf *Configuration, config LoopAc
 			break
 		}
 		next := job * config.Length
-		tmp.SetUint64(2)
-		pow(z, tmp, next-n, mask)
+		tmp := two
+		tmp.Pow256(mp.UInt256{[8]uint64{next - n}}, mask)
+		z.MulMod(tmp, mask)
 		n = next
 
 		for i, dn := range steps[:cycleSize] {
 			n += dn
-			z.Mul(z, bumps[i])
-			z.Mod(z, mask)
+			z.MulMod(bumps[i], mask)
 			r.Tests++
-			if even := checkDigits(z, tmp); even == -1 {
-				solutions = append(solutions, n)
+			if even := checkDigits(z); even == -1 {
+				r.Solutions = append(r.Solutions, n)
 			} else {
 				if even > r.MaxEven {
 					r.MaxEven = even
@@ -269,7 +276,7 @@ func worker(thread int, dispatch chan uint64, conf *Configuration, config LoopAc
 			}
 		}
 		n += steps[cycleSize]
-		z.Mul(z, bumps[cycleSize]).Mod(z, mask)
+		z.MulMod(bumps[cycleSize], mask)
 	}
 	r.Success = true
 	if conf.Verbose {
@@ -283,10 +290,12 @@ func worker(thread int, dispatch chan uint64, conf *Configuration, config LoopAc
 func dispatcher(totalBatches uint64, dispatch chan uint64, verbose bool) {
 	step := (totalBatches + 19) / 20
 	t0 := time.Now()
+	tick := time.NewTicker(time.Second)
+	lastReport := time.Now()
+	startTime := time.Now()
+	normalReporting := false
 	for i := uint64(0); i < totalBatches; {
-		dispatch <- i
-		i++
-		if verbose && i%step == 0 {
+		report := func() {
 			t1 := time.Now()
 			total := t1.Sub(t0).Seconds()
 			dt := (total + 0.5) / float64(i+1)
@@ -298,6 +307,30 @@ func dispatcher(totalBatches uint64, dispatch chan uint64, verbose bool) {
 				dt*1000, total*1000,
 				float64(totalBatches-i)*dt,
 			)
+
+		}
+
+		select {
+		case <-tick.C:
+			if normalReporting {
+				continue
+			}
+			total := time.Since(startTime).Seconds()
+			recent := time.Since(lastReport).Seconds()
+			interval := math.Min(30.0, math.Max(5, total/2.5))
+			//fmt.Printf("total: %.1f, recent: %.1f, interval: %.1f\n", total, recent, interval)
+			if verbose && recent >= interval {
+				report()
+				lastReport = time.Now()
+			}
+		case dispatch <- i:
+			i++
+			if verbose && i%step == 0 {
+				if normalReporting || time.Since(lastReport).Seconds() > 5 {
+					report()
+				}
+				normalReporting = true
+			}
 		}
 	}
 	if verbose {
@@ -313,7 +346,9 @@ func readAccelerator(name string) (LoopAccelerator, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
+	defer func(f *os.File) {
+		_ = f.Close()
+	}(f)
 	txt, err := io.ReadAll(f)
 	if err != nil {
 		log.Fatal(err)
@@ -328,31 +363,12 @@ func readAccelerator(name string) (LoopAccelerator, error) {
 
 // checkDigits returns -1 if all of the digits in z are even. If not, the
 // position counting from the right is returned.
-func checkDigits(z *big.Int, zdig *big.Int) int {
-	digit := big.NewInt(0)
-	zdig.Set(z)
-	for j := 0; zdig.Cmp(zero) > 0; j++ {
-		zdig, digit = zdig.QuoRem(zdig, ten, digit)
-		if digit.Uint64()%2 != 0 {
+func checkDigits(z mp.UInt256) int {
+	for j := 0; z.Cmp(zero) > 0; j++ {
+		digit := z.DivModSmall(10)
+		if digit%2 == 1 {
 			return j
 		}
 	}
 	return -1
-}
-
-// pow sets `z = (z * m^n) mod mask`. The value of m is destroyed in the process.
-func pow(z *big.Int, m *big.Int, n uint64, mask *big.Int) {
-	if n == 0 {
-		return
-	}
-	for n > 0 {
-		if n%2 == 1 {
-			z.Mul(z, m)
-			z.Mod(z, mask)
-		}
-		n = n / 2
-		tmp := big.NewInt(0)
-		tmp.Set(m)
-		m.Mul(m, tmp)
-	}
 }

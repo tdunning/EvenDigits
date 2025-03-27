@@ -13,27 +13,27 @@ func TestInt320_AddSmall(t *testing.T) {
 	a := UInt256{}
 	a.AddSmall(x)
 	for i := 1; i < 8; i++ {
-		assert.Equal(t, uint64(0), a.content[i])
+		assert.Equal(t, uint64(0), a.Content[i])
 	}
-	assert.Equal(t, x, a.content[0])
+	assert.Equal(t, x, a.Content[0])
 
 	u0 := uint64(rand.Uint32()) | (1 << 31)
 	u1 := uint64(math.MaxUint32)
 	u2 := uint64(rand.Uint32()) | (1 << 31)
-	a.content[0] = u0
-	a.content[1] = u1
-	a.content[2] = u2
+	a.Content[0] = u0
+	a.Content[1] = u1
+	a.Content[2] = u2
 
 	x |= 1 << 31
 
 	a.AddSmall(x)
-	assert.Equal(t, math.MaxUint32&(u0+x), a.content[0])
+	assert.Equal(t, math.MaxUint32&(u0+x), a.Content[0])
 	carry := (u0 + x) >> 32
-	assert.Equal(t, math.MaxUint32&(u1+carry), a.content[1])
+	assert.Equal(t, math.MaxUint32&(u1+carry), a.Content[1])
 	carry = (u1 + carry) >> 32
-	assert.Equal(t, math.MaxUint32&(u2+carry), a.content[2])
+	assert.Equal(t, math.MaxUint32&(u2+carry), a.Content[2])
 	carry = (u2 + carry) >> 32
-	assert.Equal(t, math.MaxUint32&carry, a.content[3])
+	assert.Equal(t, math.MaxUint32&carry, a.Content[3])
 }
 
 func TestInt320_MulSmall(t *testing.T) {
@@ -45,11 +45,11 @@ func TestInt320_MulSmall(t *testing.T) {
 
 	a.MulSmall(x)
 	t0 := x * u0
-	assert.Equal(t, t0&math.MaxUint32, a.content[0])
+	assert.Equal(t, t0&math.MaxUint32, a.Content[0])
 	t1 := (t0 >> 32) + x*u1
-	assert.Equal(t, t1&math.MaxUint32, a.content[1])
+	assert.Equal(t, t1&math.MaxUint32, a.Content[1])
 	t2 := (t1 >> 32) + x*u2
-	assert.Equal(t, t2&math.MaxUint32, a.content[2])
+	assert.Equal(t, t2&math.MaxUint32, a.Content[2])
 }
 
 func TestInt320_DivRemSmall2(t *testing.T) {
@@ -57,10 +57,10 @@ func TestInt320_DivRemSmall2(t *testing.T) {
 	a.AddSmall(uint64(5003))
 	n := a.DivModSmall(1000)
 	assert.Equal(t, uint64(3), n)
-	assert.Equal(t, uint64(5), a.content[0])
+	assert.Equal(t, uint64(5), a.Content[0])
 
 	for i := 0; i < 8; i++ {
-		a.content[i] = math.MaxUint32 - 1
+		a.Content[i] = math.MaxUint32 - 1
 	}
 	ax := a
 	b0 := uint64(math.MaxUint32)
@@ -71,7 +71,7 @@ func TestInt320_DivRemSmall2(t *testing.T) {
 
 	for i := 0; i < 1; i++ {
 		for i := 0; i < 8; i++ {
-			a.content[i] = uint64(rand.Uint32())
+			a.Content[i] = uint64(rand.Uint32())
 		}
 		b := uint64(23)
 
@@ -91,16 +91,16 @@ func Test_DivRemSmall(t *testing.T) {
 	a := UInt256{[8]uint64{0, 1, 0, 0, 0, 0, 0, 0}}
 	r := a.DivModSmall(10)
 	assert.Equal(t, uint64(6), r)
-	assert.Equal(t, uint64(429496729), a.content[0])
-	assert.Equal(t, uint64(0), a.content[1])
+	assert.Equal(t, uint64(429496729), a.Content[0])
+	assert.Equal(t, uint64(0), a.Content[1])
 
 	a = UInt256{[8]uint64{1, 1, 1, 1, 0, 0, 0, 0}}
 	r = a.DivModSmall(10000)
 	assert.Equal(t, uint64(9249), r)
-	assert.Equal(t, uint64(3828104350), a.content[0])
-	assert.Equal(t, uint64(3134037635), a.content[1])
-	assert.Equal(t, uint64(429496), a.content[2])
-	assert.Equal(t, uint64(0), a.content[3])
+	assert.Equal(t, uint64(3828104350), a.Content[0])
+	assert.Equal(t, uint64(3134037635), a.Content[1])
+	assert.Equal(t, uint64(429496), a.Content[2])
+	assert.Equal(t, uint64(0), a.Content[3])
 
 	// floor(pi * 10^70) takes up about 234 bits
 	piDigits := "31415926535897932384626433832795028841971693993751058209749445923078164"
@@ -233,8 +233,8 @@ func Test_Mod256_2(t *testing.T) {
 
 func Test_Mod256_3(t *testing.T) {
 	a := UInt512{}
-	for i := 0; i < len(pi70.content); i++ {
-		a.content[i] = pi70.content[i]
+	for i := 0; i < len(pi70.Content); i++ {
+		a.content[i] = pi70.Content[i]
 	}
 	b := UInt256{[8]uint64{
 		10000, 0, 0, 0, 0, 0, 0, 0,
@@ -273,12 +273,86 @@ func Test_Mul(t *testing.T) {
 }
 
 func Test_PowMod(t *testing.T) {
-	a := UInt256{[8]uint64{2}}
 	mask := UInt256{[8]uint64{1}}
 	for i := 0; i < 55; i++ {
 		mask.MulSmall(10)
 	}
-	a.Pow256(10000, mask)
-	pow := UInt256{[8]uint64{0, 2449473536, 1386834847, 401415762, 3736286779, 2337887, 0, 0}}
+	a := UInt256{[8]uint64{2}}
+	a.Pow256(UInt256{[8]uint64{2}}, mask)
+	pow := UInt256{[8]uint64{1 << 2}}
 	assert.Equal(t, 0, a.Cmp(pow))
+
+	a = UInt256{[8]uint64{2}}
+	a.Pow256(UInt256{[8]uint64{10000}}, mask)
+	pow = UInt256{[8]uint64{0, 2449473536, 1386834847, 401415762, 3736286779, 2337887, 0, 0}}
+	assert.Equal(t, 0, a.Cmp(pow))
+}
+
+func Test_PowByTable(t *testing.T) {
+	setbit := func(z *UInt256, bit int) {
+		i := bit / 32
+		bit = bit % 32
+		z.Content[i] = z.Content[i] | (1 << bit)
+	}
+
+	mask := UInt256{[8]uint64{1}}
+	for i := 0; i < 55; i++ {
+		mask.MulSmall(10)
+	}
+	table := PowerTable(UInt256{[8]uint64{2}}, mask)
+	for i := 0; i < 250; i++ {
+		z1 := table[i]
+		n := UInt256{[8]uint64{}}
+		setbit(&n, i)
+		z2 := PowByTable(table, n, mask)
+		assert.Equal(t, z1, z2)
+	}
+	for i := 3; i < 11; {
+		//j := 2
+		//k := 5
+		j := MinNRand(8, 200)
+		k := MinNRand(8, 200)
+		if i == j || i == k {
+			continue
+		}
+		z1 := table[i]
+		z1.MulMod(table[j], mask)
+		z1.MulMod(table[k], mask)
+
+		z2 := table[0]
+		n := UInt256{[8]uint64{}}
+		setbit(&n, i)
+		setbit(&n, j)
+		setbit(&n, k)
+		z2.Pow256(n, mask)
+
+		z3 := PowByTable(table, n, mask)
+		assert.Equal(t, z1, z2)
+		assert.Equal(t, z1, z3)
+		i++
+	}
+}
+
+func MinNRand(n int, scale int) int {
+	r := scale
+	for i := 0; i < n; i++ {
+		z := rand.IntN(scale)
+		if z < r {
+			r = z
+		}
+	}
+	return r
+}
+
+func Test_String(t *testing.T) {
+	assert.Equal(t, "0", UInt256{[8]uint64{}}.String())
+	assert.Equal(t, "1", UInt256{[8]uint64{1}}.String())
+	assert.Equal(t, "1000", UInt256{[8]uint64{1000}}.String())
+	mask := UInt256{[8]uint64{1}}
+	for i := 0; i < 50; i++ {
+		mask.MulSmall(10)
+	}
+	z := UInt256{[8]uint64{2}}
+	z.Pow256(UInt256{[8]uint64{2000}}, mask)
+	assert.Equal(t, "25175435528800822842770817965453762184851149029376", z.String())
 }
