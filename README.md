@@ -166,10 +166,20 @@ thread with `cycle-013.json`.
 
 # Results
 
-Running on a single core of an older server, these were the results using a 15
-digit sieve. Per core, this machine is a bit slower than a single ARM core on my
-laptop but the server has much more memory which becomes important with the
-larger sieve basis. This is a run testing $10^15$ values.
+Running many threads on an 18 core older server, this system was able to test
+100P candidates using a 15 digit sieve (no additional solutions found). I expect
+that using the sieve with $d$-digits to build the sieve with $d+1$-digits would
+speed the cycle characterization up enough to build a 20 digit sieve which
+should make the program run 32 times faster. That puts a 1E sample run into
+view.
+
+In earlier tests running on a single core of an older server, these were the
+results using a 15 digit sieve. Per core, this machine is a bit slower than a
+single ARM core on my laptop but the server has much more memory which becomes
+important with the larger sieve basis. This is a run testing $10^15$ values. The
+most recent versions also use the new mp package which puts pretty much all of
+the extended precision numbers onto the stack instead of the heap. This results
+in about half the memory usage.
 
 ```
 dunning@host:~/EvenDigits$ go run sieve/scan.go -threads 1 -sieve cycle-015.json -limit 1P -verbose -digits 55
@@ -214,16 +224,16 @@ dunning@host:~/EvenDigits$
    particular those from the `math/big` library.
 2) The code does not yet use the new extended precision library. That should
    resolve the multi-threading issues and may be faster than the `math/big`
-   library. 
+   library.
 3) Currently, outside of the extended precision math library the code has no
-   unit tests which expose a risk that there might be remaining code errors. 
+   unit tests which expose a risk that there might be remaining code errors.
 4) The cycle detector can be made much simpler and faster because we know how
    many steps it takes to get into the cycle and we know that the cycle
    with $n+1$ digits is composed of 5 cycles with $n$ digits. That means we only
    have to examine the candidates from the $n$-digit cycles to find the roughly
    50% that survive as $n+1$-digit sieve values. The $n$-digit cycles will, of
    course, can be found faster by using the $n-1$-digit cycles. This will make
-   finding larger cycles thousands of times faster. 
+   finding larger cycles thousands of times faster.
 5) Finally, memory usage seems anomalously high. For the largest sieve, the
    running program consumes 5-6GB of main storage. This seems excessive, but no
    profiling has been done yet to understand the source.

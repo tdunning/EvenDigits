@@ -142,7 +142,6 @@ func main() {
 	z := two
 	for n := uint64(1); n <= config.Leadin; n++ {
 		if even := checkDigits(z); even == -1 {
-			fmt.Printf("%s is even\n", z.String())
 			solutions = append(solutions, n)
 		}
 		z.MulMod(two, mask)
