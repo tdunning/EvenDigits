@@ -82,23 +82,24 @@ the cache. For a laptop, using 12 or 13 digits for the sieve seems about right.
 To run this code, you start with the cycle generator.
 
 ```
-% go run cycle/cycles.go  
-                                                                    gain vs 
-  digits  tail           cycle  exclude  maximal   last    even    brute force
-       1     1               4     true     true      1       2       2.00
-       2     2              20     true     true      2       5       4.00
-       3     3             100     true     true      4      12       8.33
-       4     4             500     true     true      8      30      16.67
-       5     5           2,500     true     true     16      74      33.78
-       6     6          12,500     true     true     32     185      67.57
-       7     7          62,500     true     true     64     462     135.28
-       8     8         312,500     true     true    128   1,156     270.33
-       9     9       1,562,500     true     true    256   2,889     540.84
-      10    10       7,812,500     true     true    512   7,221   1,081.91
-      11    11      39,062,500     true     true  1,024  18,056   2,163.41
-      12    12     195,312,500     true     true  2,048  45,139   4,326.91
-      13    13     976,562,500     true     true  4,096 112,846   8,653.94
-      14    14   4,882,812,500     true     true  8,192 282,111  17,308.13
+% go run cycle/cycles.go
+                                                                                   gain vs 
+  digits  tail           cycle  exclude  maximal   last            gte5    even  brute force
+       1     1               4     true     true      1               2       2       2.00
+       2     2              20     true     true      2              15       5       4.00
+       3     3             100     true     true      4              88      12       8.33
+       4     4             500     true     true      8             470      30      16.67
+       5     5           2,500     true     true     16           2,426      74      33.78
+       6     6          12,500     true     true     32          12,315     185      67.57
+       7     7          62,500     true     true     64          62,038     462     135.28
+       8     8         312,500     true     true    128         311,344   1,156     270.33
+       9     9       1,562,500     true     true    256       1,559,611   2,889     540.84
+      10    10       7,812,500     true     true    512       7,805,279   7,221   1,081.91
+      11    11      39,062,500     true     true  1,024      39,044,444  18,056   2,163.41
+      12    12     195,312,500     true     true  2,048     195,267,361  45,139   4,326.91
+      13    13     976,562,500     true     true  4,096     976,449,654 112,846   8,653.94
+      14    14   4,882,812,500     true     true  8,192   4,882,530,389 282,111  17,308.13
+      15    15  24,414,062,500     true     true 16,384  24,413,357,228 705,272  34,616.52
 ```
 
 A side effect of running this program is the creation of a number of JSON files
