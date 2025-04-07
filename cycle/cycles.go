@@ -3,10 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"golang.org/x/text/message"
 	"log"
 	"os"
 	"slices"
+
+	"golang.org/x/text/message"
 )
 
 /*
@@ -29,15 +30,16 @@ func main() {
 	}
 
 	start := uint64(1)
-	fmt.Printf("                                                                    gain vs \n")
+	fmt.Printf("                                                                                   gain vs \n")
 	fmt.Printf(
-		"%8s %5s %15s %8s %8s %6s %7s  %s\n",
+		"%8s %5s %15s %8s %8s %6s %15s %7s  %s\n",
 		"digits",
 		"tail",
 		"cycle",
 		"exclude",
 		"maximal",
 		"last",
+		"gte5",
 		"even",
 		"brute force",
 	)
@@ -85,10 +87,15 @@ func main() {
 		exclusion := true  // are all the tail elements excluded from the cycle?
 		inclusion := false // is the first element after the tail included?
 		allEven := 0
+		allGTE5 := 0
 
 		for i := 0; i < n; i++ {
 			tmp := fast * 2
 			fast = tmp % mask
+			if hasDigitGTE5(fast) {
+				allGTE5++
+			}
+			//fmt.Printf("%15d %t\n", fast, hasDigitGTE5(fast))
 			if evenDigits(fast) && tmp == fast {
 				// all even digit and no carry
 				allEven++
@@ -158,7 +165,7 @@ func main() {
 			_ = f.Close()
 		}
 		//fmt.Printf("entered cycle of length %d after %d steps\n", n, mu)
-		_, _ = p.Printf("%8d %5d %15d %8t %8t %6d %7d %10.2f\n", digits, mu, n, inclusion, exclusion, tail[mu-1], allEven, float64(n)/float64(allEven))
+		_, _ = p.Printf("%8d %5d %15d %8t %8t %6d %15d %7d %10.2f\n", digits, mu, n, inclusion, exclusion, tail[mu-1], allGTE5, allEven, float64(n)/float64(allEven))
 	}
 }
 
@@ -173,4 +180,17 @@ func evenDigits(x uint64) bool {
 		}
 	}
 	return even
+}
+
+func hasDigitGTE5(x uint64) bool {
+	hasGTE5 := false
+	for z := x; z > 0; {
+		d := z % 10
+		z = z / 10
+		if d >= 5 {
+			hasGTE5 = true
+			break
+		}
+	}
+	return hasGTE5
 }
